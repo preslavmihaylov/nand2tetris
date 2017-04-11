@@ -1,0 +1,61 @@
+# depslib dependency file v1.0
+1460026892 source:c:\users\pmihaylo\projects\hackassembler\hackassembler\assembler.cpp
+	"parser.h"
+	"translator.h"
+	"symbol-table.h"
+	<iostream>
+	<fstream>
+
+1460026954 c:\users\pmihaylo\projects\hackassembler\hackassembler\parser.h
+	<fstream>
+
+1460026860 source:c:\users\pmihaylo\projects\hackassembler\hackassembler\parser.cpp
+	"parser.h"
+	"symbol-table.h"
+	<stack>
+
+1460026797 source:c:\users\pmihaylo\projects\hackassembler\hackassembler\symbol-table.cpp
+	"symbol-table.h"
+
+1460026845 source:c:\users\pmihaylo\projects\hackassembler\hackassembler\translator.cpp
+	"translator.h"
+	"symbol-table.h"
+	<map>
+	<stdlib.h>
+
+1460026980 c:\users\pmihaylo\projects\hackassembler\hackassembler\translator.h
+	<string>
+
+1460026908 c:\users\pmihaylo\projects\hackassembler\hackassembler\symbol-table.h
+	<map>
+
+1460026860 source:c:\users\pmihaylo\projects\hackassembler\parser.cpp
+	"parser.h"
+	"symbol-table.h"
+	<stack>
+
+1460026954 c:\users\pmihaylo\projects\hackassembler\parser.h
+	<fstream>
+
+1460026908 c:\users\pmihaylo\projects\hackassembler\symbol-table.h
+	<map>
+
+1460026797 source:c:\users\pmihaylo\projects\hackassembler\symbol-table.cpp
+	"symbol-table.h"
+
+1460026845 source:c:\users\pmihaylo\projects\hackassembler\translator.cpp
+	"translator.h"
+	"symbol-table.h"
+	<map>
+	<stdlib.h>
+
+1460026980 c:\users\pmihaylo\projects\hackassembler\translator.h
+	<string>
+
+1460028712 source:c:\users\pmihaylo\projects\hackassembler\assembler.cpp
+	"parser.h"
+	"translator.h"
+	"symbol-table.h"
+	<iostream>
+	<fstream>
+
