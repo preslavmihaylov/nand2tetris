@@ -1,0 +1,41 @@
+# depslib dependency file v1.0
+1491922544 source:d:\programming\repositories\personal\hackassembler\vmtranslator\main.cpp
+	<iostream>
+	"VMTranslator.h"
+
+1491923439 d:\programming\repositories\personal\hackassembler\vmtranslator\vmtranslator.h
+	<string>
+	"CodeWriter.h"
+
+1491927880 source:d:\programming\repositories\personal\hackassembler\vmtranslator\vmtranslator.cpp
+	<fstream>
+	<iostream>
+	<stdexcept>
+	<cassert>
+	"VMTranslator.h"
+	"Parser.h"
+
+1491922920 d:\programming\repositories\personal\hackassembler\vmtranslator\parser.h
+	<fstream>
+	<string>
+	"CommandType.h"
+
+1491920951 d:\programming\repositories\personal\hackassembler\vmtranslator\commandtype.h
+
+1491937324 source:d:\programming\repositories\personal\hackassembler\vmtranslator\parser.cpp
+	<sstream>
+	<iostream>
+	<algorithm>
+	<unordered_map>
+	<unordered_set>
+	"Parser.h"
+
+1491927845 source:d:\programming\repositories\personal\hackassembler\vmtranslator\codewriter.cpp
+	<iostream>
+	"CodeWriter.h"
+
+1491937546 d:\programming\repositories\personal\hackassembler\vmtranslator\codewriter.h
+	<fstream>
+	<string>
+	"CommandType.h"
+
