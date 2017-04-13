@@ -17,9 +17,13 @@ namespace HackVMTranslator
     class VMTranslator
     {
     public:
-        void Translate(const std::string& filename);
+        void TranslateDirectory(const std::string& directoryName);
+        void TranslateFile(const std::string& inputFilename);
     private:
+        CodeWriter codeWriter;
+
         void TranslateToAssembly(CodeWriter& codeWriter, const Command& command);
+        void TranslateFileInternal(const std::string& inputFilename);
     };
 }
 

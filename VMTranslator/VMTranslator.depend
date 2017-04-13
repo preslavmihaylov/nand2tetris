@@ -1,40 +1,44 @@
 # depslib dependency file v1.0
-1491922544 source:d:\programming\repositories\personal\hackassembler\vmtranslator\main.cpp
+1492070264 source:d:\programming\repositories\personal\hackassembler\vmtranslator\main.cpp
 	<iostream>
 	"VMTranslator.h"
 
-1491923439 d:\programming\repositories\personal\hackassembler\vmtranslator\vmtranslator.h
+1492071970 d:\programming\repositories\personal\hackassembler\vmtranslator\vmtranslator.h
 	<string>
 	"CodeWriter.h"
 
-1491927880 source:d:\programming\repositories\personal\hackassembler\vmtranslator\vmtranslator.cpp
+1492077734 source:d:\programming\repositories\personal\hackassembler\vmtranslator\vmtranslator.cpp
 	<fstream>
 	<iostream>
 	<stdexcept>
 	<cassert>
+	<dirent.h>
 	"VMTranslator.h"
 	"Parser.h"
 
-1491922920 d:\programming\repositories\personal\hackassembler\vmtranslator\parser.h
+1492016842 d:\programming\repositories\personal\hackassembler\vmtranslator\parser.h
 	<fstream>
 	<string>
 	"CommandType.h"
 
 1491920951 d:\programming\repositories\personal\hackassembler\vmtranslator\commandtype.h
 
-1491937324 source:d:\programming\repositories\personal\hackassembler\vmtranslator\parser.cpp
+1492021763 source:d:\programming\repositories\personal\hackassembler\vmtranslator\parser.cpp
 	<sstream>
 	<iostream>
 	<algorithm>
 	<unordered_map>
 	<unordered_set>
+	<cassert>
 	"Parser.h"
 
-1491927845 source:d:\programming\repositories\personal\hackassembler\vmtranslator\codewriter.cpp
+1492078138 source:d:\programming\repositories\personal\hackassembler\vmtranslator\codewriter.cpp
 	<iostream>
+	<sstream>
+	<cassert>
 	"CodeWriter.h"
 
-1491937546 d:\programming\repositories\personal\hackassembler\vmtranslator\codewriter.h
+1492077972 d:\programming\repositories\personal\hackassembler\vmtranslator\codewriter.h
 	<fstream>
 	<string>
 	"CommandType.h"

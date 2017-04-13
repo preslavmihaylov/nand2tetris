@@ -15,6 +15,17 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    vmt.Translate(argv[1]);
+    string filename(argv[1]);
+
+    int dotIndex = filename.find_last_of(".");
+    if (dotIndex != -1)
+    {
+        vmt.TranslateFile(filename);
+    }
+    else
+    {
+        vmt.TranslateDirectory(filename);
+    }
+
     return 0;
 }

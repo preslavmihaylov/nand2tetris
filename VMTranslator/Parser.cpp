@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include <cassert>
 
 #include "Parser.h"
 
@@ -30,7 +31,13 @@ static unordered_map<string, eCommandType> commandsMapping =
     { "lt", eCommandTypeArithmetic },
     { "and", eCommandTypeArithmetic },
     { "or", eCommandTypeArithmetic },
-    { "not", eCommandTypeArithmetic }
+    { "not", eCommandTypeArithmetic },
+    { "label", eCommandTypeLabel },
+    { "goto", eCommandTypeGoto },
+    { "if-goto", eCommandTypeIf },
+    { "call", eCommandTypeCall },
+    { "function", eCommandTypeFunction },
+    { "return", eCommandTypeReturn }
 };
 
 static unordered_set<string> validSegments =
@@ -74,15 +81,47 @@ bool CommandExists(const string& str)
     return commandsMapping.find(str) != commandsMapping.end();
 }
 
-/* PUBLIC METHODS */
-bool Parser::HasMoreCommands()
-{
-    return this->inputSource.good();
-}
-
 bool IsValidSegment(const string& segment)
 {
     return validSegments.find(segment) != validSegments.end();
+}
+
+/* PRIVATE METHODS */
+void Parser::ValidateOperation(const string& command, const string& segment, int index, const string& line)
+{
+    bool isValid = true;
+    string errMsg;
+
+    // index must be non-negative
+    if (index < 0)
+    {
+        isValid = false;
+        errMsg = NON_NEGATIVE_INDEX_ERR + line;
+    }
+    // When accessing pointer segment, only valied indices are 0 and 1
+    else if ((segment == "pointer") && (index != 0) && (index != 1))
+    {
+        isValid = false;
+        errMsg = SYNTAX_ERR_MSG + line;
+    }
+    // temp section contains only 8 entries
+    else if (segment == "temp" && index >= 8)
+    {
+        isValid = false;
+        errMsg = TEMP_ERR_MSG + line;
+    }
+    // cannnot pop from constant section
+    else if (this->commandType == eCommandTypePop && segment == "constant")
+    {
+        isValid = false;
+        errMsg = POP_CONST_ERR_MSG + line;
+    }
+
+    if (!isValid)
+    {
+        this->SetDefaultOutputs();
+        throw runtime_error(errMsg);
+    }
 }
 
 void Parser::SetDefaultOutputs()
@@ -90,6 +129,12 @@ void Parser::SetDefaultOutputs()
     this->commandType = eCommandTypeEmpty;
     this->argument1 = "";
     this->argument2 = 0;
+}
+
+/* PUBLIC METHODS */
+bool Parser::HasMoreCommands()
+{
+    return this->inputSource.good();
 }
 
 void Parser::Advance()
@@ -141,35 +186,7 @@ void Parser::Advance()
                 throw runtime_error(SYNTAX_ERR_MSG + line);
             }
 
-            // handle invariants
-
-            // index must be non-negative
-            if (index < 0)
-            {
-                this->SetDefaultOutputs();
-                throw runtime_error(NON_NEGATIVE_INDEX_ERR + line);
-            }
-
-            // When accessing pointer segment, only valied indices are 0 and 1
-            if ((segment == "pointer") && (index != 0) && (index != 1))
-            {
-                this->SetDefaultOutputs();
-                throw runtime_error(SYNTAX_ERR_MSG + line);
-            }
-
-            // temp section contains only 8 entries
-            if (segment == "temp" && index >= 8)
-            {
-                this->SetDefaultOutputs();
-                throw runtime_error(TEMP_ERR_MSG + line);
-            }
-
-            // cannnot pop from constant section
-            if (this->commandType == eCommandTypePop && segment == "constant")
-            {
-                this->SetDefaultOutputs();
-                throw runtime_error(POP_CONST_ERR_MSG + line);
-            }
+            this->ValidateOperation(command, segment, index, line);
 
             this->argument1 = segment;
             this->argument2 = index;
@@ -180,7 +197,62 @@ void Parser::Advance()
             this->argument1 = command;
             this->argument2 = 0;
         }
-        // TODO: Extend API for other commands
+        else if ((this->commandType == eCommandTypeLabel) ||
+                 (this->commandType == eCommandTypeGoto) ||
+                 (this->commandType == eCommandTypeIf))
+        {
+            string label;
+
+            // branching commands expect a label after the command
+            if (!(iss >> label))
+            {
+                this->SetDefaultOutputs();
+                throw runtime_error(SYNTAX_ERR_MSG + line);
+            }
+
+            this->argument1 = label;
+        }
+        else if ((this->commandType == eCommandTypeCall) ||
+                 (this->commandType == eCommandTypeFunction))
+        {
+            string funcName;
+            int argumentsCnt;
+            iss >> funcName;
+
+            // function commands expect a function name and arguments count after the command
+            if (!(iss >> argumentsCnt))
+            {
+                this->SetDefaultOutputs();
+                throw runtime_error(SYNTAX_ERR_MSG + line);
+            }
+
+            this->argument1 = funcName;
+            this->argument2 = argumentsCnt;
+        }
+        else if (this->commandType == eCommandTypeReturn)
+        {
+            // nothing. Return command has no arguments
+        }
+        else
+        {
+            // command types should be valid by this point
+            this->SetDefaultOutputs();
+            assert(false);
+            return;
+        }
+
+        // line should either be empty or end with a comment after an operation is read
+        if (iss)
+        {
+            string leftover;
+            iss >> leftover;
+
+            if (leftover.size() != 0 && !IsComment(leftover))
+            {
+                this->SetDefaultOutputs();
+                throw runtime_error(SYNTAX_ERR_MSG + line);
+            }
+        }
     }
     else
     {

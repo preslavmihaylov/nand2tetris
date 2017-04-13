@@ -8,29 +8,32 @@ using namespace std;
 using namespace HackVMTranslator;
 
 /* PRIVATE METHODS */
-void CodeWriter::CompileAddCommand()
+void CodeWriter::CompileSumationCommand(const string& command)
 {
-    this->outputDest << "// add" << endl;
+    string sumOp;
+    if (command == "add")
+    {
+        sumOp = "M+D";
+    }
+    else if (command == "sub")
+    {
+        sumOp = "M-D";
+    }
+    else
+    {
+        // command should be valid by this point
+        assert(false);
+        return;
+    }
+
+    this->outputDest << "// " << command << endl;
     this->outputDest << "@SP" << endl;
     this->outputDest << "M=M-1 // SP--" << endl;
     this->outputDest << "A=M" << endl;
     this->outputDest << "D=M   // D = (*SP)" << endl;
     this->outputDest << "@SP" << endl;
     this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=D+M // *(SP-1) = D + *(SP-1)" << endl;
-    this->outputDest << endl;
-}
-
-void CodeWriter::CompileSubtractCommand()
-{
-    this->outputDest << "// sub" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "M=M-1 // SP--" << endl;
-    this->outputDest << "A=M" << endl;
-    this->outputDest << "D=M   // D = *SP" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=M-D // *(SP-1) = *(SP-1) - D" << endl;
+    this->outputDest << "M=" << sumOp << " // *(SP-1) = D " << command << " *(SP-1)" << endl;
     this->outputDest << endl;
 }
 
@@ -43,20 +46,40 @@ void CodeWriter::CompileNegateCommand()
     this->outputDest << endl;
 }
 
-void CodeWriter::CompileEqualsCommand()
+void CodeWriter::CompileComparisonCommand(const string& command)
 {
     ostringstream oss1;
     ostringstream oss2;
 
-    oss1 << this->outputFilename << ".TRUE." << this->labelsCounter;
+    oss1 << this->processedFilename << ".TRUE." << this->labelsCounter;
     string trueLabel = oss1.str();
 
-    oss2 << this->outputFilename << ".END." << this->labelsCounter;
+    oss2 << this->processedFilename << ".END." << this->labelsCounter;
     string endLabel = oss2.str();
 
     this->labelsCounter += 1;
 
-    this->outputDest << "// eq" << endl;
+    string jumpInstruction;
+    if (command == "eq")
+    {
+        jumpInstruction = "JEQ";
+    }
+    else if (command == "gt")
+    {
+        jumpInstruction = "JGT";
+    }
+    else if (command == "lt")
+    {
+        jumpInstruction = "JLT";
+    }
+    else
+    {
+        // command should be valid by this point
+        assert(false);
+        return;
+    }
+
+    this->outputDest << "// " << command << endl;
     this->outputDest << "@SP" << endl;
     this->outputDest << "M=M-1 // SP--" << endl;
     this->outputDest << "A=M" << endl;
@@ -65,7 +88,7 @@ void CodeWriter::CompileEqualsCommand()
     this->outputDest << "A=M-1" << endl;
     this->outputDest << "D=M-D // D = *(SP-1) - D" << endl;
     this->outputDest << "@" << trueLabel << endl;
-    this->outputDest << "D; JEQ // if (D == 0) goto TRUE" << endl;
+    this->outputDest << "D; " << jumpInstruction << " // if (D " << command << " 0) goto TRUE" << endl;
     this->outputDest << "@SP" << endl;
     this->outputDest << "A=M-1" << endl;
     this->outputDest << "M=0   // *(SP-1) = false" << endl;
@@ -79,101 +102,32 @@ void CodeWriter::CompileEqualsCommand()
     this->outputDest << endl;
 }
 
-void CodeWriter::CompileGreaterThanCommand()
+void CodeWriter::CompileLogicalCommand(const string& command)
 {
-    ostringstream oss1;
-    ostringstream oss2;
+    string op;
+    if (command == "and")
+    {
+        op = "&";
+    }
+    else if (command == "or")
+    {
+        op = "|";
+    }
+    else
+    {
+        // code should be valid by this point
+        assert(false);
+        return;
+    }
 
-    oss1 << this->outputFilename << ".TRUE." << this->labelsCounter;
-    string trueLabel = oss1.str();
-
-    oss2 << this->outputFilename << ".END." << this->labelsCounter;
-    string endLabel = oss2.str();
-
-    this->labelsCounter += 1;
-
-    this->outputDest << "// gt" << endl;
+    this->outputDest << "// " << command << endl;
     this->outputDest << "@SP" << endl;
     this->outputDest << "M=M-1 // SP--" << endl;
     this->outputDest << "A=M" << endl;
     this->outputDest << "D=M   // D = *SP" << endl;
     this->outputDest << "@SP" << endl;
     this->outputDest << "A=M-1" << endl;
-    this->outputDest << "D=M-D // D = *(SP-1) - D" << endl;
-    this->outputDest << "@" << trueLabel << endl;
-    this->outputDest << "D; JGT // if (D > 0) goto TRUE" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=0   // *(SP-1) = false" << endl;
-    this->outputDest << "@" << endLabel << endl;
-    this->outputDest << "0; JMP // goto END" << endl;
-    this->outputDest << "(" << trueLabel << ")" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=-1   // *(SP-1) = true" << endl;
-    this->outputDest << "(" + endLabel << ")" << endl;
-    this->outputDest << endl;
-}
-
-void CodeWriter::CompileLessThanCommand()
-{
-    ostringstream oss1;
-    ostringstream oss2;
-
-    oss1 << this->outputFilename << ".TRUE." << this->labelsCounter;
-    string trueLabel = oss1.str();
-
-    oss2 << this->outputFilename << ".END." << this->labelsCounter;
-    string endLabel = oss2.str();
-
-    this->labelsCounter += 1;
-
-    this->outputDest << "// lt" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "M=M-1 // SP--" << endl;
-    this->outputDest << "A=M" << endl;
-    this->outputDest << "D=M   // D = *SP" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "D=M-D // D = *(SP-1) - D" << endl;
-    this->outputDest << "@" << trueLabel << endl;
-    this->outputDest << "D; JLT // if (D < 0) goto TRUE" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=0   // *(SP-1) = false" << endl;
-    this->outputDest << "@" << endLabel << endl;
-    this->outputDest << "0; JMP // goto END" << endl;
-    this->outputDest << "(" << trueLabel << ")" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=-1   // *(SP-1) = true" << endl;
-    this->outputDest << "(" + endLabel << ")" << endl;
-    this->outputDest << endl;
-}
-
-void CodeWriter::CompileAndCommand()
-{
-    this->outputDest << "// and" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "M=M-1 // SP--" << endl;
-    this->outputDest << "A=M" << endl;
-    this->outputDest << "D=M   // D = *SP" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=D&M // *(SP-1) = D&(*(SP-1))" << endl;
-    this->outputDest << endl;
-}
-
-void CodeWriter::CompileOrCommand()
-{
-    this->outputDest << "// or" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "M=M-1 // SP--" << endl;
-    this->outputDest << "A=M" << endl;
-    this->outputDest << "D=M   // D = *SP" << endl;
-    this->outputDest << "@SP" << endl;
-    this->outputDest << "A=M-1" << endl;
-    this->outputDest << "M=D|M // *(SP-1) = D|(*(SP-1))" << endl;
+    this->outputDest << "M=D" << op << "M // *(SP-1) = D" << op << "(*(SP-1))" << endl;
     this->outputDest << endl;
 }
 
@@ -234,7 +188,7 @@ void CodeWriter::CompileStaticPushCommand(int index)
 {
     ostringstream oss;
 
-    oss << this->outputFilename << "." << index;
+    oss << this->processedFilename << "." << index;
     string staticLabel = oss.str();
 
     this->outputDest << "// push static " << index << endl;
@@ -315,7 +269,7 @@ void CodeWriter::CompileStaticPopCommand(int index)
 {
     ostringstream oss;
 
-    oss << this->outputFilename << "." << index;
+    oss << this->processedFilename << "." << index;
     string staticLabel = oss.str();
 
     this->outputDest << "// pop static " << index << endl;
@@ -356,6 +310,214 @@ void CodeWriter::CompilePointerPopCommand(int index)
     this->outputDest << endl;
 }
 
+void CodeWriter::CompileLabelCommand(const std::string& label)
+{
+    string updatedLabel = this->processedFilename + "." + this->processedFunction + "$" + label;
+    this->outputDest << "// label " << label << endl;
+    this->outputDest << "(" << updatedLabel << ")" << endl;
+    this->outputDest << endl;
+}
+
+void CodeWriter::CompileGotoCommand(const std::string& label)
+{
+    string updatedLabel = this->processedFilename + "." + this->processedFunction + "$" + label;
+    this->outputDest << "// goto " << label << endl;
+    this->outputDest << "@" << updatedLabel << endl;
+    this->outputDest << "0; JMP" << endl;
+    this->outputDest << endl;
+}
+
+void CodeWriter::CompileIfCommand(const std::string& label)
+{
+    string updatedLabel = this->processedFilename + "." + this->processedFunction + "$" + label;
+    this->outputDest << "// if-goto " << label << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M-1 // SP--" << endl;
+    this->outputDest << "A=M" << endl;
+    this->outputDest << "D=M   // D=(*SP)" << endl;
+    this->outputDest << "@" << updatedLabel << endl;
+    this->outputDest << "D; JNE // if (D != 0) goto " << label << endl;
+    this->outputDest << endl;
+}
+
+void CodeWriter::CompileCallCommand(const std::string& functionName, int argsCnt)
+{
+    ostringstream oss;
+    oss << this->processedFilename << "." << functionName << "$return" << this->labelsCounter;
+    string returnLabel = oss.str();
+    ++this->labelsCounter;
+
+    // store return address to stack frame
+    this->outputDest << "// call " << functionName << " " << argsCnt << endl;
+    this->outputDest << "@" << returnLabel << endl;
+    this->outputDest << "D=A" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M+1 // SP++" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "M=D   // M=(address for return)" << endl;
+
+    // store LCL to stack frame
+    this->outputDest << "@LCL  // store LCL to stack frame" << endl;
+    this->outputDest << "D=M   // D=LCL" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M+1 // SP++" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "M=D   // *(SP-1)=LCL" << endl;
+
+    // store ARG to stack frame
+    this->outputDest << "@ARG  // store ARG to stack frame" << endl;
+    this->outputDest << "D=M   // D=ARG" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M+1 // SP++" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "M=D   // *(SP-1)=ARG" << endl;
+
+    // store THIS to stack frame
+    this->outputDest << "@THIS // store THIS to stack frame" << endl;
+    this->outputDest << "D=M   // D=THIS" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M+1 // SP++" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "M=D   // *(SP-1)=THIS" << endl;
+
+    // store THAT to stack frame
+    this->outputDest << "@THAT // store THAT to stack frame" << endl;
+    this->outputDest << "D=M   // D=THAT" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M+1 // SP++" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "M=D   // *(SP-1)=THAT" << endl;
+
+    // set ARG to (SP-5-argsCnt)
+    this->outputDest << "@SP   // set ARG=(SP-5-argsCnt)" << endl;
+    this->outputDest << "D=M   // D=SP" << endl;
+    this->outputDest << "@5" << endl;
+    this->outputDest << "D=D-A // D=D-5" << endl;
+    this->outputDest << "@" << argsCnt << endl;
+    this->outputDest << "D=D-A // D=D-argsCnt" << endl;
+    this->outputDest << "@ARG" << endl;
+    this->outputDest << "M=D   // ARG=(SP-5-argsCnt)" << endl;
+
+    // set LCL=SP
+    this->outputDest << "@SP   // set LCL=SP" << endl;
+    this->outputDest << "D=M" << endl;
+    this->outputDest << "@LCL" << endl;
+    this->outputDest << "M=D   // LCL=SP" << endl;
+    // call function
+    this->outputDest << "@" << functionName  << " // jump to function" << endl;
+    this->outputDest << "0; JMP" << endl;
+    this->outputDest << "(" << returnLabel << ")" << endl;
+
+    this->outputDest << endl;
+}
+
+void CodeWriter::CompileFunctionCommand(const std::string& functionName, int localsCnt)
+{
+    ostringstream oss;
+    oss << this->processedFilename << "." << functionName << ".LOOP." << this->labelsCounter;
+    string funcLoopLabel = oss.str();
+    oss << ".END";
+    string funcLoopEndLabel = oss.str();
+
+    this->labelsCounter += 1;
+
+    // update processed function
+    this->processedFunction = functionName;
+
+    this->outputDest << "(" << functionName << ")" << endl;
+    this->outputDest << "@" << localsCnt << " // arguments count" << endl;
+    this->outputDest << "D=A" << endl;
+
+    // Loop for initializing the local segment
+    this->outputDest << "(" << funcLoopLabel << ")" << endl;
+    this->outputDest << "@" << funcLoopEndLabel << endl;
+    this->outputDest << "D; JLE // if (D <= 0) goto " << funcLoopEndLabel << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=M+1  // SP++" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "M=0    // *(SP-1)=0" << endl;
+    this->outputDest << "D=D-1  // D--" << endl;
+    this->outputDest << "@" << funcLoopLabel << endl;
+    this->outputDest << "0; JMP" << endl;
+    this->outputDest << "(" << funcLoopEndLabel << ")" << endl;
+    this->outputDest << endl;
+}
+
+void CodeWriter::CompileReturnCommand()
+{
+    // store end of stack frame (LCL) to R6
+    this->outputDest << "@LCL" << endl;
+    this->outputDest << "D=M" << endl;
+    this->outputDest << "@R6" << endl;
+    this->outputDest << "M=D    // *R6 = LCL, store end of stack frame" << endl;
+
+    // store return address (LCL-5) to R7
+    this->outputDest << "@5" << endl;
+    this->outputDest << "D=D-A" << endl;
+    this->outputDest << "A=D" << endl;
+    this->outputDest << "D=M    // D=*(LCL-5)" << endl;
+    this->outputDest << "@R7" << endl;
+    this->outputDest << "M=D    // store return address to R7" << endl;
+
+    // store returned value
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "A=M-1" << endl;
+    this->outputDest << "D=M    // D=*(SP-1)" << endl;
+    this->outputDest << "@ARG" << endl;
+    this->outputDest << "A=M" << endl;
+    this->outputDest << "M=D    // *ARG=D, store returned value" << endl;
+
+    // adjust caller stack pointer
+    this->outputDest << "D=A" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=D+1  // SP=(ARG+1)" << endl;
+
+    // restore caller THAT address
+    this->outputDest << "@R6" << endl;
+    this->outputDest << "D=M" << endl;
+    this->outputDest << "@1" << endl;
+    this->outputDest << "D=D-A" << endl;
+    this->outputDest << "A=D" << endl;
+    this->outputDest << "D=M    // D=*(R6-1), caller THAT addr" << endl;
+    this->outputDest << "@THAT" << endl;
+    this->outputDest << "M=D" << endl;
+
+    // restore caller THIS address
+    this->outputDest << "@R6" << endl;
+    this->outputDest << "D=M" << endl;
+    this->outputDest << "@2" << endl;
+    this->outputDest << "D=D-A" << endl;
+    this->outputDest << "A=D" << endl;
+    this->outputDest << "D=M    // D=*(R6-2), caller THIS addr" << endl;
+    this->outputDest << "@THIS" << endl;
+    this->outputDest << "M=D" << endl;
+
+    // restore caller ARG address
+    this->outputDest << "@R6" << endl;
+    this->outputDest << "D=M" << endl;
+    this->outputDest << "@3" << endl;
+    this->outputDest << "D=D-A" << endl;
+    this->outputDest << "A=D" << endl;
+    this->outputDest << "D=M    // D=*(R6-3), caller ARG addr" << endl;
+    this->outputDest << "@ARG" << endl;
+    this->outputDest << "M=D" << endl;
+
+    // restore caller THAT address
+    this->outputDest << "@R6" << endl;
+    this->outputDest << "D=M" << endl;
+    this->outputDest << "@4" << endl;
+    this->outputDest << "D=D-A" << endl;
+    this->outputDest << "A=D" << endl;
+    this->outputDest << "D=M    // D=*(R6-4), caller LCL addr" << endl;
+    this->outputDest << "@LCL" << endl;
+    this->outputDest << "M=D" << endl;
+
+    this->outputDest << "@R7    // jump to caller return point" << endl;
+    this->outputDest << "A=M" << endl;
+    this->outputDest << "0; JMP" << endl;
+    this->outputDest << endl;
+}
+
 /* PUBLIC METHODS */
 void CodeWriter::WriteArithmetic(const std::string& command)
 {
@@ -364,37 +526,21 @@ void CodeWriter::WriteArithmetic(const std::string& command)
         return;
     }
 
-    if (command == "add")
+    if (command == "add" || command == "sub")
     {
-        this->CompileAddCommand();
-    }
-    else if (command == "sub")
-    {
-        this->CompileSubtractCommand();
+        this->CompileSumationCommand(command);
     }
     else if (command == "neg")
     {
         this->CompileNegateCommand();
     }
-    else if (command == "eq")
+    else if (command == "eq" || command == "gt" || command == "lt")
     {
-        this->CompileEqualsCommand();
+        this->CompileComparisonCommand(command);
     }
-    else if (command == "gt")
+    else if (command == "and" || command == "or")
     {
-        this->CompileGreaterThanCommand();
-    }
-    else if (command == "lt")
-    {
-        this->CompileLessThanCommand();
-    }
-    else if (command == "and")
-    {
-        this->CompileAndCommand();
-    }
-    else if (command == "or")
-    {
-        this->CompileOrCommand();
+        this->CompileLogicalCommand(command);
     }
     else if (command == "not")
     {
@@ -463,7 +609,7 @@ void CodeWriter::WritePushPop(eCommandType commandType, const std::string& segme
             assert(false);
         }
     }
-    else // if (commandType == eCommandTypePop)
+    else if (commandType == eCommandTypePop)
     {
         if (segment == "local")
         {
@@ -508,4 +654,61 @@ void CodeWriter::WritePushPop(eCommandType commandType, const std::string& segme
             assert(false);
         }
     }
+    else
+    {
+        // At this point, command should be valid
+        assert(false);
+    }
+}
+
+void CodeWriter::WriteBranchCommand(eCommandType commandType, const string& label)
+{
+    if (commandType == eCommandTypeLabel)
+    {
+        this->CompileLabelCommand(label);
+    }
+    else if (commandType == eCommandTypeGoto)
+    {
+        this->CompileGotoCommand(label);
+    }
+    else if (commandType == eCommandTypeIf)
+    {
+        this->CompileIfCommand(label);
+    }
+    else
+    {
+        // At this poinst, command should be valid
+        assert(false);
+    }
+}
+
+void CodeWriter::WriteFunctionCommand(eCommandType commandType, const string& funcName, int argumentsCnt)
+{
+    if (commandType == eCommandTypeFunction)
+    {
+        this->CompileFunctionCommand(funcName, argumentsCnt);
+    }
+    else if (commandType == eCommandTypeCall)
+    {
+        this->CompileCallCommand(funcName, argumentsCnt);
+    }
+    else
+    {
+        // At this point, command should be valid
+        assert(false);
+    }
+}
+
+void CodeWriter::WriteReturnCommand()
+{
+    this->CompileReturnCommand();
+}
+
+void CodeWriter::WriteStartupCode()
+{
+    this->outputDest << "@256" << endl;
+    this->outputDest << "D=A" << endl;
+    this->outputDest << "@SP" << endl;
+    this->outputDest << "M=D  // SP=256" << endl;
+    this->CompileCallCommand("Sys.init", 0);
 }

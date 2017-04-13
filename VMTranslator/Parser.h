@@ -25,6 +25,7 @@ namespace HackVMTranslator
         int argument2;
 
         void SetDefaultOutputs();
+        void ValidateOperation(const std::string& command, const std::string& segment, int index, const std::string& line);
     };
 }
 

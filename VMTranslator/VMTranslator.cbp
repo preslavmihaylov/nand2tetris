@@ -20,6 +20,13 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="CodeWriter.cpp" />
+		<Unit filename="CodeWriter.h" />
+		<Unit filename="CommandType.h" />
+		<Unit filename="Parser.cpp" />
+		<Unit filename="Parser.h" />
+		<Unit filename="VMTranslator.cpp" />
+		<Unit filename="VMTranslator.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />
