@@ -1,0 +1,34 @@
+# depslib dependency file v1.0
+1492422607 source:d:\programming\repositories\personal\hackassembler\jackcompiler\main.cpp
+	<iostream>
+	"JackAnalyzer.h"
+	"JackTokenizer.h"
+	"CompilationEngine.h"
+
+1492363802 source:d:\programming\repositories\personal\hackassembler\jackcompiler\jacktokenizer.cpp
+	<cassert>
+	<unordered_set>
+	<iostream>
+	<sstream>
+	"JackTokenizer.h"
+
+1492261053 d:\programming\repositories\personal\hackassembler\jackcompiler\jacktokenizer.h
+	<string>
+	<fstream>
+
+1492422594 d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.h
+	"JackTokenizer.h"
+
+1492422579 source:d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.cpp
+	<cassert>
+	"CompilationEngine.h"
+
+1492420867 source:d:\programming\repositories\personal\hackassembler\jackcompiler\jackanalyzer.cpp
+	<dirent.h>
+	<iostream>
+	"JackAnalyzer.h"
+	"CompilationEngine.h"
+
+1492420554 d:\programming\repositories\personal\hackassembler\jackcompiler\jackanalyzer.h
+	<string>
+
