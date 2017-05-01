@@ -22,10 +22,14 @@
 		</Compiler>
 		<Unit filename="CompilationEngine.cpp" />
 		<Unit filename="CompilationEngine.h" />
-		<Unit filename="JackAnalyzer.cpp" />
-		<Unit filename="JackAnalyzer.h" />
+		<Unit filename="JackController.cpp" />
+		<Unit filename="JackController.h" />
 		<Unit filename="JackTokenizer.cpp" />
 		<Unit filename="JackTokenizer.h" />
+		<Unit filename="SymbolTable.cpp" />
+		<Unit filename="SymbolTable.h" />
+		<Unit filename="VMWriter.cpp" />
+		<Unit filename="VMWriter.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />

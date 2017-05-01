@@ -2,9 +2,18 @@
 #define COMPILATION_ENGINE_H
 
 #include "JackTokenizer.h"
+#include "SymbolTable.h"
 
 namespace JackCompiler
 {
+    enum eIdentifierType
+    {
+        eIdentifierTypeDeclaration,
+        eIdentifierTypeUsage,
+        eIdentifierTypeCount,
+        eIdentifierTypeNone
+    };
+
     class CompilationEngine
     {
     public:
@@ -15,6 +24,7 @@ namespace JackCompiler
     private:
         JackTokenizer tokenizer;
         std::ofstream outputStream;
+        SymbolTable symbolTable;
 
         void CompileClass();
         bool CompileClassVarDec();
@@ -33,12 +43,15 @@ namespace JackCompiler
 
         void ExpectKeyword(eKeyword keyword);
         void ExpectSymbol(char symbol);
-        void ExpectIdentifier();
+        void ExpectIdentifier(eIdentifierType expectedIdType,
+                              std::string idType = std::string(),
+                              eVariableKind idKind = eVariableKindNone);
         void ExpectIntConst();
         void ExpectStringConst();
 
         bool IsNextTokenTerm();
         bool IsNextTokenOperation();
+        std::string GetIdentifierXMLFormat(const std::string& id);
     };
 }
 

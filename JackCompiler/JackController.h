@@ -1,11 +1,11 @@
-#ifndef JACK_COMPILER_H
-#define JACK_COMPILER_H
+#ifndef JACK_CONTROLLER_H
+#define JACK_CONTROLLER_H
 
 #include <string>
 
 namespace JackCompiler
 {
-    class JackAnalyzer
+    class JackController
     {
     public:
         void CompileDirectory(const std::string& directoryName);
@@ -15,4 +15,4 @@ namespace JackCompiler
     };
 }
 
-#endif // JACK_COMPILER_H
+#endif // JACK_CONTROLLER_H

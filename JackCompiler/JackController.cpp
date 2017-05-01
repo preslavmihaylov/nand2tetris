@@ -1,7 +1,7 @@
 #include <dirent.h>
 #include <iostream>
 
-#include "JackAnalyzer.h"
+#include "JackController.h"
 #include "CompilationEngine.h"
 
 using namespace std;
@@ -14,7 +14,7 @@ bool IsValidJackFile(const string& filename)
 }
 
 /* PRIVATE METHODS */
-void JackAnalyzer::CompileFileInternal(const string& inputFilename)
+void JackController::CompileFileInternal(const string& inputFilename)
 {
     int dotIndex = inputFilename.find_last_of(".");
     string outputFilename = inputFilename.substr(0, dotIndex);
@@ -25,7 +25,7 @@ void JackAnalyzer::CompileFileInternal(const string& inputFilename)
 }
 
 /* PUBLIC METHODS */
-void JackAnalyzer::CompileDirectory(const string& directoryName)
+void JackController::CompileDirectory(const string& directoryName)
 {
     struct dirent *entry;
     DIR *dp;
@@ -49,7 +49,7 @@ void JackAnalyzer::CompileDirectory(const string& directoryName)
     closedir(dp);
 }
 
-void JackAnalyzer::CompileFile(const string& inputFilename)
+void JackController::CompileFile(const string& inputFilename)
 {
     if (!IsValidJackFile(inputFilename))
     {
