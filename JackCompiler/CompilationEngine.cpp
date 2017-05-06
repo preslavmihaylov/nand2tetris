@@ -249,7 +249,7 @@ void CompilationEngine::ExpectIntConst()
         this->tokenizer.Advance();
         if (this->tokenizer.GetTokenType() == eTokenTypeIntConst)
         {
-            this->outputStream << "<integerConstant>" << this->tokenizer.GetIntVal() << "</integerConstant>" << endl;
+            this->vmWriter.WritePush(eVMSegmentConst, this->tokenizer.GetIntVal());
         }
         else
         {

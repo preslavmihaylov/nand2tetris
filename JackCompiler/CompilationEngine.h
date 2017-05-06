@@ -3,6 +3,7 @@
 
 #include "JackTokenizer.h"
 #include "SymbolTable.h"
+#include "VMWriter.h"
 
 namespace JackCompiler
 {
@@ -18,13 +19,16 @@ namespace JackCompiler
     {
     public:
         CompilationEngine(const std::string& inputFilename, const std::string& outputFilename)
-            : tokenizer(inputFilename), outputStream(outputFilename) {};
+            : tokenizer(inputFilename),
+              outputStream(outputFilename),
+              vmWriter(outputFilename) {};
 
     void CompileFile();
     private:
         JackTokenizer tokenizer;
         std::ofstream outputStream;
         SymbolTable symbolTable;
+        VMWriter vmWriter;
 
         void CompileClass();
         bool CompileClassVarDec();
