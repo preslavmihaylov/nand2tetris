@@ -883,25 +883,31 @@ bool CompilationEngine::CompileDo()
 bool CompilationEngine::CompileLet()
 {
     /* letStatement: 'let' varName ('[' expression ']')? '=' expression ';'  */
+    bool isArray = false;
 
     this->tokenizer.Advance();
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
         this->tokenizer.GetKeywordType() == eKeywordLet)
     {
         string identifier;
-        this->outputStream << "<letStatement>" << endl;
 
         this->tokenizer.PutbackToken();
         this->ExpectKeyword(eKeywordLet);
         identifier = this->ExpectIdentifier(eIdentifierTypeUsage);
+
+        eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
+        int index = this->symbolTable.GetIndexOf(identifier);
 
         // ('[' expression ']')?
         this->tokenizer.Advance();
         if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
             this->tokenizer.GetSymbol() == '[')
         {
-            // TODO
+            isArray = true;
+
             this->tokenizer.PutbackToken();
+
+            this->vmWriter.WritePush(GetSegmentOf(varKind), index);
 
             this->ExpectSymbol('[');
             // Expression is mandatory
@@ -911,6 +917,8 @@ bool CompilationEngine::CompileLet()
             }
 
             this->ExpectSymbol(']');
+
+            this->vmWriter.WriteArithmetic(eVMOperationAdd);
         }
         else
         {
@@ -927,11 +935,17 @@ bool CompilationEngine::CompileLet()
 
         this->ExpectSymbol(';');
 
-        eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
-        int index = this->symbolTable.GetIndexOf(identifier);
-        this->vmWriter.WritePop(GetSegmentOf(varKind), index);
-
-        this->outputStream << "</letStatement>" << endl;
+        if (isArray)
+        {
+            this->vmWriter.WritePop(eVMSegmentTemp, 0);
+            this->vmWriter.WritePop(eVMSegmentPointer, 1);
+            this->vmWriter.WritePush(eVMSegmentTemp, 0);
+            this->vmWriter.WritePop(eVMSegmentThat, 0);
+        }
+        else
+        {
+            this->vmWriter.WritePop(GetSegmentOf(varKind), index);
+        }
     }
     else
     {
@@ -1239,6 +1253,8 @@ void CompilationEngine::CompileTerm()
     else if (tokenType == eTokenTypeIdentifier)
     {
         string identifier = this->tokenizer.GetIdentifier();
+        eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
+        int varIndex = this->symbolTable.GetIndexOf(identifier);
         /*
         this->tokenizer.PutbackToken();
         this->ExpectIdentifier(eIdentifierTypeNone);
@@ -1249,8 +1265,14 @@ void CompilationEngine::CompileTerm()
         if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
             (this->tokenizer.GetSymbol() == '['))
         {
-            // TODO
             this->tokenizer.PutbackToken();
+
+            if (varKind == eVariableKindNone)
+            {
+                this->tokenizer.ThrowException(EXPECTED_ID_ERR);
+            }
+
+            this->vmWriter.WritePush(GetSegmentOf(varKind), varIndex);
 
             this->ExpectSymbol('[');
             // Expression is mandatory
@@ -1258,8 +1280,10 @@ void CompilationEngine::CompileTerm()
             {
                 this->tokenizer.ThrowException(EXPECTED_EXPRESSION_ERR);
             }
-
             this->ExpectSymbol(']');
+            this->vmWriter.WriteArithmetic(eVMOperationAdd);
+            this->vmWriter.WritePop(eVMSegmentPointer, 1);
+            this->vmWriter.WritePush(eVMSegmentThat, 0);
         }
         // ( className | varName) '.' subroutineName '(' expressionList ')'
         else if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
@@ -1269,7 +1293,6 @@ void CompilationEngine::CompileTerm()
             string subroutineName;
             int argsCnt;
             int thisArgumentCnt = 0;
-            eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
             this->tokenizer.PutbackToken();
 
             // id not found --> static method called
@@ -1285,7 +1308,7 @@ void CompilationEngine::CompileTerm()
                 objectName = this->symbolTable.GetTypeOf(identifier);
 
                 // first argument is *this
-                this->vmWriter.WritePush(GetSegmentOf(varKind), this->symbolTable.GetIndexOf(identifier));
+                this->vmWriter.WritePush(GetSegmentOf(varKind), varIndex);
                 thisArgumentCnt++;
             }
 
@@ -1322,15 +1345,11 @@ void CompilationEngine::CompileTerm()
         {
             this->tokenizer.PutbackToken();
 
-            eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
-
             // variable does not exist
             if (varKind == eVariableKindNone)
             {
                 this->tokenizer.ThrowException(UNDECLARED_ID_ERR);
             }
-
-            int varIndex = this->symbolTable.GetIndexOf(identifier);
 
             // push SEGMENT INDEX
             this->vmWriter.WritePush(GetSegmentOf(varKind), varIndex);
