@@ -1,5 +1,7 @@
 # nand2tetris
 This repository consists of a set of projects based on the original nand2tetris course: http://www.nand2tetris.org/
+The aim of these projects is to implement a full scale 16 bit computer along with essential software (OS, assembler, compiler...)
+from scratch. The basic building block is a NAND logic gate and it is used to further create more complex logic gates up to a read 16 bit processor and an assembler for the processor instruction set architecture. It continues with software-related projects such as an assembler, a virtual machine, a compiler and an OS. The final task of this course, is to create a game on the programming language you built yourself, running on the computer, which is your deed as well.
 
 The included projects are:
 ## Hack Computer
