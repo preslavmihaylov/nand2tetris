@@ -16,7 +16,8 @@ namespace JackCompiler
         eVMSegmentThat,
         eVMSegmentPointer,
         eVMSegmentTemp,
-        eVMSegmentCount
+        eVMSegmentCount,
+        eVMSegmentNone
     };
 
     enum eVMOperation

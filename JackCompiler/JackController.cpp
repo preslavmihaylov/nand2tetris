@@ -7,6 +7,12 @@
 using namespace std;
 using namespace JackCompiler;
 
+bool DoesFileExist(const string& filename)
+{
+    ifstream infile(filename);
+    return infile.good();
+}
+
 bool IsValidJackFile(const string& filename)
 {
     int dotIndex = filename.find_last_of(".");
@@ -54,6 +60,11 @@ void JackController::CompileFile(const string& inputFilename)
     if (!IsValidJackFile(inputFilename))
     {
         cerr << "Invalid file extension: " << inputFilename << endl;
+        return;
+    }
+    else if (!DoesFileExist(inputFilename))
+    {
+        cerr << "The specified file does not exist: " << inputFilename << endl;
         return;
     }
 

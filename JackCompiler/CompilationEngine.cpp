@@ -1,5 +1,6 @@
 #include <cassert>
 #include <sstream>
+#include <unordered_set>
 
 #include "CompilationEngine.h"
 
@@ -14,10 +15,105 @@ using namespace std;
 #define EXPECTED_STRING_ERR ("Expected string constant at line ")
 #define EXPECTED_TERM_ERR ("Expected term at line ")
 #define DECLARED_ID_ERR ("Identifier is already declared at line ")
+#define UNDECLARED_ID_ERR ("Undeclared identifier at line ")
+#define INVALID_CLASSNAME_ERR ("Class name should match filename at line ")
+#define RETURN_EXPECTED_ERR ("Expected return statement at line ")
 
-#include <cstdlib>
+unordered_set<char> validOperations =
+{
+    '+',
+    '-',
+    '*',
+    '/',
+    '&',
+    '|',
+    '<',
+    '>',
+    '='
+};
+
+eVMSegment GetSegmentOf(eVariableKind varKind)
+{
+    eVMSegment varSegment;
+    switch (varKind)
+    {
+    case eVariableKindArgument:
+        varSegment = eVMSegmentArg;
+        break;
+    case eVariableKindField:
+        varSegment = eVMSegmentThis;
+        break;
+    case eVariableKindLocal:
+        varSegment = eVMSegmentLocal;
+        break;
+    case eVariableKindStatic:
+        varSegment = eVMSegmentStatic;
+        break;
+    default:
+        assert(false);
+        varSegment = eVMSegmentNone;
+    }
+
+    return varSegment;
+}
 
 /* PRIVATE METHODS */
+string CompilationEngine::GetFullSubroutineName(string subroutineName)
+{
+    return (this->outputFilename + "." + subroutineName);
+}
+
+string CompilationEngine::GenerateLabel()
+{
+    ostringstream oss;
+    oss << "LABEL" << this->autoIncrementCounter++;
+    return oss.str();
+}
+
+void CompilationEngine::WriteOperation(char operationSymbol, bool isUnary)
+{
+    switch (operationSymbol)
+    {
+        case '+':
+            this->vmWriter.WriteArithmetic(eVMOperationAdd);
+            break;
+        case '-':
+            if (!isUnary)
+            {
+                this->vmWriter.WriteArithmetic(eVMOperationSub);
+            }
+            else
+            {
+                this->vmWriter.WriteArithmetic(eVMOperationNot);
+            }
+            break;
+        case '*':
+            this->vmWriter.WriteCall("Math.multiply", 2);
+            break;
+        case '/':
+            this->vmWriter.WriteCall("Math.divide", 2);
+            break;
+        case '&':
+            this->vmWriter.WriteArithmetic(eVMOperationAnd);
+            break;
+        case '|':
+            this->vmWriter.WriteArithmetic(eVMOperationOr);
+            break;
+        case '<':
+            this->vmWriter.WriteArithmetic(eVMOperationLt);
+            break;
+        case '>':
+            this->vmWriter.WriteArithmetic(eVMOperationGt);
+            break;
+        case '=':
+            this->vmWriter.WriteArithmetic(eVMOperationEq);
+            break;
+        default:
+            // invalid operation
+            assert(false);
+    }
+}
+
 string CompilationEngine::GetIdentifierXMLFormat(const string& id)
 {
     ostringstream oss;
@@ -34,18 +130,18 @@ bool CompilationEngine::IsNextTokenOperation()
 
     bool result = false;
     this->tokenizer.Advance();
-    if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
-        (this->tokenizer.GetSymbol() == '+' ||
-         this->tokenizer.GetSymbol() == '-' ||
-         this->tokenizer.GetSymbol() == '*' ||
-         this->tokenizer.GetSymbol() == '/' ||
-         this->tokenizer.GetSymbol() == '&' ||
-         this->tokenizer.GetSymbol() == '|' ||
-         this->tokenizer.GetSymbol() == '<' ||
-         this->tokenizer.GetSymbol() == '>' ||
-         this->tokenizer.GetSymbol() == '='))
+    eTokenType tokenType = this->tokenizer.GetTokenType();
+    if (tokenType == eTokenTypeSymbol)
     {
-        result = true;
+        char symbol = this->tokenizer.GetSymbol();
+        if (validOperations.find(symbol) != validOperations.end())
+        {
+            result = true;
+        }
+        else
+        {
+            result = false;
+        }
     }
 
     this->tokenizer.PutbackToken();
@@ -165,14 +261,16 @@ void CompilationEngine::ExpectSymbol(char expectedSymbol)
     }
 }
 
-void CompilationEngine::ExpectIdentifier(eIdentifierType expectedIdType, string idType, eVariableKind idKind)
+string CompilationEngine::ExpectIdentifier(eIdentifierType expectedIdType, string idType, eVariableKind idKind)
 {
+    string result;
+
     if (expectedIdType == eIdentifierTypeDeclaration &&
         (idType.empty() || idKind == eVariableKindNone))
     {
         // type and kind should be specified upon declaration
         assert(false);
-        return;
+        return string();
     }
 
     if (this->tokenizer.HasMoreTokens())
@@ -229,7 +327,10 @@ void CompilationEngine::ExpectIdentifier(eIdentifierType expectedIdType, string 
             {
                 // this function should be invoked with one of the three possibilities
                 assert(false);
+                return string();
             }
+
+            result = id;
         }
         else
         {
@@ -240,26 +341,8 @@ void CompilationEngine::ExpectIdentifier(eIdentifierType expectedIdType, string 
     {
         this->tokenizer.ThrowException(EXPECTED_ID_ERR);
     }
-}
 
-void CompilationEngine::ExpectIntConst()
-{
-    if (this->tokenizer.HasMoreTokens())
-    {
-        this->tokenizer.Advance();
-        if (this->tokenizer.GetTokenType() == eTokenTypeIntConst)
-        {
-            this->vmWriter.WritePush(eVMSegmentConst, this->tokenizer.GetIntVal());
-        }
-        else
-        {
-            this->tokenizer.ThrowException(EXPECTED_INT_ERR);
-        }
-    }
-    else
-    {
-        this->tokenizer.ThrowException(EXPECTED_INT_ERR);
-    }
+    return result;
 }
 
 void CompilationEngine::ExpectStringConst()
@@ -295,9 +378,15 @@ void CompilationEngine::CompileClass()
     // clear symbol table
     this->symbolTable.Clear();
 
-    this->outputStream << "<class>" << endl;
     this->ExpectKeyword(eKeywordClass);
-    this->ExpectIdentifier(eIdentifierTypeNone);
+    string identifier = this->ExpectIdentifier(eIdentifierTypeNone);
+
+    // class name must match output filename
+    if (identifier != this->outputFilename)
+    {
+        this->tokenizer.ThrowException(INVALID_CLASSNAME_ERR);
+    }
+
     this->ExpectSymbol('{');
 
     do
@@ -311,7 +400,6 @@ void CompilationEngine::CompileClass()
     } while (subroutineDecCompiled == true);
 
     this->ExpectSymbol('}');
-    this->outputStream << "</class>" << endl;
 
 }
 
@@ -421,6 +509,10 @@ bool CompilationEngine::CompileSubroutine()
 {
     /* ('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' parameterList ')' subroutineBody  */
 
+    string subroutineName;
+    eKeyword funcType;
+
+    this->symbolTable.StartSubroutine();
     this->tokenizer.Advance();
 
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword)
@@ -430,10 +522,7 @@ bool CompilationEngine::CompileSubroutine()
             (this->tokenizer.GetKeywordType() == eKeywordFunction) ||
             (this->tokenizer.GetKeywordType() == eKeywordMethod))
         {
-            this->outputStream << "<subroutineDec>" << endl;
-            this->outputStream << "<keyword>";
-            this->outputStream << this->tokenizer.GetKeyword();
-            this->outputStream << "</keyword>" << endl;
+            funcType = this->tokenizer.GetKeywordType();
         }
         else
         {
@@ -451,44 +540,71 @@ bool CompilationEngine::CompileSubroutine()
              this->tokenizer.GetKeywordType() == eKeywordBoolean ||
              this->tokenizer.GetKeywordType() == eKeywordVoid))
         {
-            this->outputStream << "<keyword>"
-                               << this->tokenizer.GetKeyword()
-                               << "</keyword>" << endl;
+            eKeyword expectedKeyword = this->tokenizer.GetKeywordType();
+            this->tokenizer.PutbackToken();
+            this->ExpectKeyword(expectedKeyword);
         }
         else if (this->tokenizer.GetTokenType() == eTokenTypeIdentifier)
         {
-            this->outputStream << "<identifier>"
-                               << this->tokenizer.GetIdentifier()
-                               << "</identifier>" << endl;
+            this->tokenizer.PutbackToken();
+            this->ExpectIdentifier(eIdentifierTypeNone);
         }
         else
         {
             this->tokenizer.ThrowException(INVALID_KEYWORD_ERR);
         }
 
-        this->ExpectIdentifier(eIdentifierTypeNone);
+        if (funcType == eKeywordMethod)
+        {
+            // define this as first argument
+            this->symbolTable.Define("this", "int", eVariableKindArgument);
+        }
+
+        subroutineName = this->ExpectIdentifier(eIdentifierTypeNone);
         this->ExpectSymbol('(');
         this->CompileParameterList();
         this->ExpectSymbol(')');
 
         // subroutine body: '{' varDec* statement* '}'
-        this->outputStream << "<subroutineBody>" << endl;
         this->ExpectSymbol('{');
-        bool varDecCompiled = true;
+
+        int totalDeclarationsCnt = 0;
+        int currentDeclarationsCnt;
 
         // varDec*
         do
         {
-            varDecCompiled = this->CompileVarDec();
-        } while (varDecCompiled == true);
+            currentDeclarationsCnt = this->CompileVarDec();
+            totalDeclarationsCnt += currentDeclarationsCnt;
+
+        } while (currentDeclarationsCnt != 0);
+
+
+        this->vmWriter.WriteFunction(this->GetFullSubroutineName(subroutineName), totalDeclarationsCnt);
+
+        if (funcType == eKeywordConstructor)
+        {
+            int localVarsCnt = this->symbolTable.VarCount(eVariableKindField);
+            // call Memory.Alloc(localVarsCnt);
+            this->vmWriter.WritePush(eVMSegmentConst, localVarsCnt);
+            this->vmWriter.WriteCall("Memory.alloc", 1);
+            // set this = (returned value from memory alloc)
+            this->vmWriter.WritePop(eVMSegmentPointer, 0);
+        }
+        else if (funcType == eKeywordMethod)
+        {
+            // set this = arg 0
+            this->vmWriter.WritePush(eVMSegmentArg, 0);
+            this->vmWriter.WritePop(eVMSegmentPointer, 0);
+        }
+        else // if (funcType == eKeywordFunction)
+        {
+            // do nothing
+        }
 
         // statements
         this->CompileStatements();
-
         this->ExpectSymbol('}');
-        this->outputStream << "</subroutineBody>" << endl;
-
-        this->outputStream << "</subroutineDec>" << endl;
     }
     else
     {
@@ -500,14 +616,14 @@ bool CompilationEngine::CompileSubroutine()
     return true;
 }
 
-void CompilationEngine::CompileParameterList()
+int CompilationEngine::CompileParameterList()
 {
     /* parameterList: ( (type varName) (',' type varName)*)? */
 
     bool hasMoreParameters = true;
     bool typeExpected = false;
+    int parametersCnt = 0;
 
-    this->outputStream << "<parameterList>" << endl;
     while (hasMoreParameters)
     {
         string declarationType;
@@ -543,11 +659,11 @@ void CompilationEngine::CompileParameterList()
         {
             // empty parameter list
             this->tokenizer.PutbackToken();
-            this->outputStream << "</parameterList>" << endl;
-            return;
+            return parametersCnt;
         }
 
         this->ExpectIdentifier(eIdentifierTypeDeclaration, declarationType, declarationKind);
+        parametersCnt++;
 
         this->tokenizer.Advance();
         if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
@@ -565,12 +681,14 @@ void CompilationEngine::CompileParameterList()
         }
     }
 
-    this->outputStream << "</parameterList>" << endl;
+    return parametersCnt;
 }
 
-bool CompilationEngine::CompileVarDec()
+// returns the number of declarations
+int CompilationEngine::CompileVarDec()
 {
     /* varDec: 'var' type varName (',' varName)* ';' */
+    int declarationsCnt = 0;
 
     this->tokenizer.Advance();
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
@@ -579,7 +697,6 @@ bool CompilationEngine::CompileVarDec()
         string declarationType;
         eVariableKind declarationKind = eVariableKindLocal;
 
-        this->outputStream << "<varDec>" << endl;
         this->tokenizer.PutbackToken();
         this->ExpectKeyword(eKeywordVar);
         this->tokenizer.Advance();
@@ -609,6 +726,7 @@ bool CompilationEngine::CompileVarDec()
         }
 
         this->ExpectIdentifier(eIdentifierTypeDeclaration, declarationType, declarationKind);
+        declarationsCnt++;
 
         // expect (',', varName)*
         bool hasMoreParameters = true;
@@ -621,6 +739,7 @@ bool CompilationEngine::CompileVarDec()
                 this->tokenizer.PutbackToken();
                 this->ExpectSymbol(',');
                 this->ExpectIdentifier(eIdentifierTypeDeclaration, declarationType, declarationKind);
+                declarationsCnt++;
             }
             else
             {
@@ -630,15 +749,13 @@ bool CompilationEngine::CompileVarDec()
         }
 
         this->ExpectSymbol(';');
-        this->outputStream << "</varDec>" << endl;
     }
     else
     {
         this->tokenizer.PutbackToken();
-        return false;
     }
 
-    return true;
+    return declarationsCnt;
 }
 
 void CompilationEngine::CompileStatements()
@@ -675,36 +792,77 @@ bool CompilationEngine::CompileDo()
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
         this->tokenizer.GetKeywordType() == eKeywordDo)
     {
-        this->outputStream << "<doStatement>" << endl;
+        string identifier;
+        int argsCnt;
 
         this->tokenizer.PutbackToken();
         this->ExpectKeyword(eKeywordDo);
-        this->ExpectIdentifier(eIdentifierTypeNone);
+
+        identifier = this->ExpectIdentifier(eIdentifierTypeNone);
 
         this->tokenizer.Advance();
         if (this->tokenizer.GetTokenType() == eTokenTypeSymbol)
         {
+            // subroutineName '(' expressionList ')'
             if (this->tokenizer.GetSymbol() == '(')
             {
+                string subroutineName = this->GetFullSubroutineName(identifier);
+                int thisArgumentCnt = 0;
+
                 this->tokenizer.PutbackToken();
 
+                // first argument is *this
+                // pointer 0 is this in current class
+                this->vmWriter.WritePush(eVMSegmentPointer, 0);
+                thisArgumentCnt++;
+
                 this->ExpectSymbol('(');
-                this->CompileExpressionList();
+                argsCnt = this->CompileExpressionList();
                 this->ExpectSymbol(')');
+
+                this->vmWriter.WriteCall(subroutineName, argsCnt + thisArgumentCnt);
             }
+            // ( className | varName) '.' subroutineName '(' expressionList ')'
             else if (this->tokenizer.GetSymbol() == '.')
             {
+                string objectName;
+                string subroutineName;
+                int thisArgumentCnt = 0;
+                eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
+
+                // id not found --> static method called
+                if (varKind == eVariableKindNone)
+                {
+                    // identifier is a name of a class
+                    objectName = identifier;
+                }
+                // id found --> class method called
+                else
+                {
+                    // identifier is a variable --> the object is the variable's type
+                    objectName = this->symbolTable.GetTypeOf(identifier);
+
+                    // first argument is *this
+                    this->vmWriter.WritePush(GetSegmentOf(varKind), this->symbolTable.GetIndexOf(identifier));
+                    thisArgumentCnt++;
+                }
+
                 this->tokenizer.PutbackToken();
                 this->ExpectSymbol('.');
-                this->ExpectIdentifier(eIdentifierTypeNone);
+                subroutineName = this->ExpectIdentifier(eIdentifierTypeNone);
                 this->ExpectSymbol('(');
-                this->CompileExpressionList();
+                argsCnt = this->CompileExpressionList();
                 this->ExpectSymbol(')');
+
+                this->vmWriter.WriteCall((objectName + "." + subroutineName), (argsCnt + thisArgumentCnt));
             }
             else
             {
                 this->tokenizer.ThrowException(INVALID_SYMBOL_ERR);
             }
+
+            // throw unused returned value
+            this->vmWriter.WritePop(eVMSegmentTemp, 0);
         }
         else
         {
@@ -712,7 +870,6 @@ bool CompilationEngine::CompileDo()
         }
 
         this->ExpectSymbol(';');
-        this->outputStream << "</doStatement>" << endl;
     }
     else
     {
@@ -731,17 +888,19 @@ bool CompilationEngine::CompileLet()
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
         this->tokenizer.GetKeywordType() == eKeywordLet)
     {
+        string identifier;
         this->outputStream << "<letStatement>" << endl;
 
         this->tokenizer.PutbackToken();
         this->ExpectKeyword(eKeywordLet);
-        this->ExpectIdentifier(eIdentifierTypeUsage);
+        identifier = this->ExpectIdentifier(eIdentifierTypeUsage);
 
         // ('[' expression ']')?
         this->tokenizer.Advance();
         if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
             this->tokenizer.GetSymbol() == '[')
         {
+            // TODO
             this->tokenizer.PutbackToken();
 
             this->ExpectSymbol('[');
@@ -768,6 +927,10 @@ bool CompilationEngine::CompileLet()
 
         this->ExpectSymbol(';');
 
+        eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
+        int index = this->symbolTable.GetIndexOf(identifier);
+        this->vmWriter.WritePop(GetSegmentOf(varKind), index);
+
         this->outputStream << "</letStatement>" << endl;
     }
     else
@@ -787,26 +950,38 @@ bool CompilationEngine::CompileWhile()
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
         this->tokenizer.GetKeywordType() == eKeywordWhile)
     {
-        this->outputStream << "<whileStatement>" << endl;
+        string beginLabel = this->GenerateLabel();
+        string endLabel = this->GenerateLabel();
 
         this->tokenizer.PutbackToken();
-        this->ExpectKeyword(eKeywordWhile);
-        this->ExpectSymbol('(');
 
+        this->ExpectKeyword(eKeywordWhile);
+
+        // BEGIN_LABEL
+        this->vmWriter.WriteLabel(beginLabel);
+
+        this->ExpectSymbol('(');
         // Expression is mandatory
         if (this->CompileExpression() == false)
         {
             this->tokenizer.ThrowException(EXPECTED_EXPRESSION_ERR);
         }
-
         this->ExpectSymbol(')');
-        this->ExpectSymbol('{');
 
+        // not
+        this->vmWriter.WriteArithmetic(eVMOperationNot);
+        // if-goto END_LABEL
+        this->vmWriter.WriteIfGoto(endLabel);
+
+        this->ExpectSymbol('{');
         // statements
         this->CompileStatements();
         this->ExpectSymbol('}');
 
-        this->outputStream << "</whileStatement>" << endl;
+        // goto BEGIN_LABEL
+        this->vmWriter.WriteGoto(beginLabel);
+        // END_LABEL
+        this->vmWriter.WriteLabel(endLabel);
     }
     else
     {
@@ -825,16 +1000,19 @@ bool CompilationEngine::CompileReturn()
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
         this->tokenizer.GetKeywordType() == eKeywordReturn)
     {
-        this->outputStream << "<returnStatement>" << endl;
-
         this->tokenizer.PutbackToken();
         this->ExpectKeyword(eKeywordReturn);
 
         // Expression is optional
-        this->CompileExpression();
+        if (this->CompileExpression() == false)
+        {
+            // no returned expression --> void function
+            this->vmWriter.WritePush(eVMSegmentConst, 0);
+        }
+
         this->ExpectSymbol(';');
 
-        this->outputStream << "</returnStatement>" << endl;
+        this->vmWriter.WriteReturn();
     }
     else
     {
@@ -853,28 +1031,36 @@ bool CompilationEngine::CompileIf()
     if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
         this->tokenizer.GetKeywordType() == eKeywordIf)
     {
-        this->outputStream << "<ifStatement>" << endl;
+        string elseLabel = this->GenerateLabel();
+        string endLabel = this->GenerateLabel();
 
         this->tokenizer.PutbackToken();
+
         this->ExpectKeyword(eKeywordIf);
         this->ExpectSymbol('(');
-
         // Expression is mandatory
         if (this->CompileExpression() == false)
         {
             this->tokenizer.ThrowException(EXPECTED_EXPRESSION_ERR);
         }
-
         this->ExpectSymbol(')');
+
+        // not
+        this->vmWriter.WriteArithmetic(eVMOperationNot);
+        // if-goto ELSE_LABEL
+        this->vmWriter.WriteIfGoto(elseLabel);
+
         this->ExpectSymbol('{');
-
-        // statements
         this->CompileStatements();
-
         this->ExpectSymbol('}');
+
+        // goto END_LABEL
+        this->vmWriter.WriteGoto(endLabel);
 
         this->tokenizer.Advance();
 
+        // ELSE_LABEL
+        this->vmWriter.WriteLabel(elseLabel);
         // (else '{' statements '}')?
         if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
             this->tokenizer.GetKeywordType() == eKeywordElse)
@@ -891,7 +1077,7 @@ bool CompilationEngine::CompileIf()
             this->tokenizer.PutbackToken();
         }
 
-        this->outputStream << "</ifStatement>" << endl;
+        this->vmWriter.WriteLabel(endLabel);
     }
     else
     {
@@ -902,13 +1088,12 @@ bool CompilationEngine::CompileIf()
     return true;
 }
 
-void CompilationEngine::CompileExpressionList()
+int CompilationEngine::CompileExpressionList()
 {
     // expressionList: (expression (',' expression)* )?
-
+    int argsCnt = 0;
     bool hasMoreExpressions = false;
 
-    this->outputStream << "<expressionList>" << endl;
     if (this->CompileExpression() == true)
     {
         hasMoreExpressions = true;
@@ -936,9 +1121,11 @@ void CompilationEngine::CompileExpressionList()
             hasMoreExpressions = false;
             this->tokenizer.PutbackToken();
         }
+
+        argsCnt++;
     }
 
-    this->outputStream << "</expressionList>" << endl;
+    return argsCnt;
 }
 
 bool CompilationEngine::CompileExpression()
@@ -949,41 +1136,34 @@ bool CompilationEngine::CompileExpression()
         varName '[' expression ']' | subroutineCall | '(' expression ')' | unaryOp term
     */
 
+    char currentOperation;
+
     if (this->IsNextTokenTerm())
     {
-        this->outputStream << "<expression>" << endl;
-
-        bool hasNextTerm = true;
-        while (hasNextTerm)
+        this->CompileTerm();
+        while (this->IsNextTokenOperation())
         {
-            this->CompileTerm();
-            if (this->IsNextTokenOperation())
+            this->tokenizer.Advance();
+            if (this->tokenizer.GetTokenType() == eTokenTypeSymbol)
             {
-                char expectedSymbol;
-                this->tokenizer.Advance();
-
-                if (this->tokenizer.GetTokenType() == eTokenTypeSymbol)
-                {
-                    expectedSymbol = this->tokenizer.GetSymbol();
-                    this->tokenizer.PutbackToken();
-                }
-                else
-                {
-                    // next token should be symbol after IsNextTokenOperation
-                    assert(false);
-                    return false;
-                }
-
-                this->ExpectSymbol(expectedSymbol);
-                hasNextTerm = true;
+                currentOperation = this->tokenizer.GetSymbol();
             }
             else
             {
-                hasNextTerm = false;
+                // next token should be symbol after IsNextTokenOperation
+                assert(false);
+                return false;
             }
+
+            this->CompileTerm();
+            this->WriteOperation(currentOperation, false);
         }
 
         this->outputStream << "</expression>" << endl;
+    }
+    else
+    {
+        return false;
     }
 
     return true;
@@ -1001,46 +1181,75 @@ void CompilationEngine::CompileTerm()
         ( className | varName) '.' subroutineName '(' expressionList ')'
     */
 
-    this->outputStream << "<term>" << endl;
-
     this->tokenizer.Advance();
+    eTokenType tokenType = this->tokenizer.GetTokenType();
 
     // integerConstant
-    if (this->tokenizer.GetTokenType() == eTokenTypeIntConst)
+    if (tokenType == eTokenTypeIntConst)
     {
-        this->tokenizer.PutbackToken();
-        this->ExpectIntConst();
+        this->vmWriter.WritePush(eVMSegmentConst, this->tokenizer.GetIntVal());
     }
     // string constant
-    else if (this->tokenizer.GetTokenType() == eTokenTypeStringConst)
+    else if (tokenType == eTokenTypeStringConst)
     {
-        this->tokenizer.PutbackToken();
-        this->ExpectStringConst();
+        string stringConst = this->tokenizer.GetStringVal();
+        // push constant SIZE
+        this->vmWriter.WritePush(eVMSegmentConst, stringConst.size());
+        // call String.new 1
+        this->vmWriter.WriteCall("String.new", 1);
+        for (char ch : stringConst)
+        {
+            // push constant CHAR
+            this->vmWriter.WritePush(eVMSegmentConst, ch);
+            // call String.appendChar 2
+            // 2 args because this is included
+            this->vmWriter.WriteCall("String.appendChar", 2);
+        }
     }
     // keyword constant
-    else if (this->tokenizer.GetTokenType() == eTokenTypeKeyword &&
+    else if (tokenType == eTokenTypeKeyword &&
              (this->tokenizer.GetKeywordType() == eKeywordTrue ||
               this->tokenizer.GetKeywordType() == eKeywordFalse ||
               this->tokenizer.GetKeywordType() == eKeywordNull ||
               this->tokenizer.GetKeywordType() == eKeywordThis))
     {
-        eKeyword expectedKeyword = this->tokenizer.GetKeywordType();
-        this->tokenizer.PutbackToken();
-        this->ExpectKeyword(expectedKeyword);
+        eKeyword keywordType = this->tokenizer.GetKeywordType();
+        if (keywordType == eKeywordFalse ||
+            keywordType == eKeywordNull)
+        {
+            // false and null are equivalent to 0 constant
+            this->vmWriter.WritePush(eVMSegmentConst, 0);
+        }
+        else if (keywordType == eKeywordTrue)
+        {
+            this->vmWriter.WritePush(eVMSegmentConst, 0);
+            this->vmWriter.WriteArithmetic(eVMOperationNot);
+        }
+        else if (keywordType == eKeywordThis)
+        {
+            // push pointer 0
+            this->vmWriter.WritePush(eVMSegmentPointer, 0);
+        }
+        else
+        {
+            assert(false);
+        }
     }
     // varName '[' expression ']' | varName | subroutineCall
-    else if (this->tokenizer.GetTokenType() == eTokenTypeIdentifier)
+    else if (tokenType == eTokenTypeIdentifier)
     {
+        string identifier = this->tokenizer.GetIdentifier();
+        /*
         this->tokenizer.PutbackToken();
-        // TODO: Fix. Not working correctly
         this->ExpectIdentifier(eIdentifierTypeNone);
-
+        */
         this->tokenizer.Advance();
 
         // varName '[' expression ']'
         if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
             (this->tokenizer.GetSymbol() == '['))
         {
+            // TODO
             this->tokenizer.PutbackToken();
 
             this->ExpectSymbol('[');
@@ -1056,32 +1265,79 @@ void CompilationEngine::CompileTerm()
         else if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
                  (this->tokenizer.GetSymbol() == '.'))
         {
+            string objectName;
+            string subroutineName;
+            int argsCnt;
+            int thisArgumentCnt = 0;
+            eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
             this->tokenizer.PutbackToken();
 
+            // id not found --> static method called
+            if (varKind == eVariableKindNone)
+            {
+                // identifier is a name of a class
+                objectName = identifier;
+            }
+            // id found --> class method called
+            else
+            {
+                // identifier is a variable --> the object is the variable's type
+                objectName = this->symbolTable.GetTypeOf(identifier);
+
+                // first argument is *this
+                this->vmWriter.WritePush(GetSegmentOf(varKind), this->symbolTable.GetIndexOf(identifier));
+                thisArgumentCnt++;
+            }
+
             this->ExpectSymbol('.');
-            this->ExpectIdentifier(eIdentifierTypeNone);
+            subroutineName = this->ExpectIdentifier(eIdentifierTypeNone);
             this->ExpectSymbol('(');
-            this->CompileExpressionList();
+            argsCnt = this->CompileExpressionList();
             this->ExpectSymbol(')');
+
+            this->vmWriter.WriteCall((objectName + "." + subroutineName), (argsCnt + thisArgumentCnt));
         }
         // subroutineName '(' expressionList ')'
         else if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
                  (this->tokenizer.GetSymbol() == '('))
         {
+            int argsCnt;
+            int thisArgumentCnt = 0;
+            string className = this->GetFullSubroutineName(identifier);
             this->tokenizer.PutbackToken();
 
+            // first argument is *this
+            // pointer 0 is this in current class
+            this->vmWriter.WritePush(eVMSegmentPointer, 0);
+            thisArgumentCnt++;
+
             this->ExpectSymbol('(');
-            this->CompileExpressionList();
+            argsCnt = this->CompileExpressionList();
             this->ExpectSymbol(')');
+
+            this->vmWriter.WriteCall(className, argsCnt);
         }
         // varName
         else
         {
             this->tokenizer.PutbackToken();
+
+            eVariableKind varKind = this->symbolTable.GetKindOf(identifier);
+
+            // variable does not exist
+            if (varKind == eVariableKindNone)
+            {
+                this->tokenizer.ThrowException(UNDECLARED_ID_ERR);
+            }
+
+            int varIndex = this->symbolTable.GetIndexOf(identifier);
+
+            // push SEGMENT INDEX
+            this->vmWriter.WritePush(GetSegmentOf(varKind), varIndex);
         }
     }
     // '(' expression ')'
-    else if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
+    else if (tokenType == eTokenTypeSymbol &&
              this->tokenizer.GetSymbol() == '(')
     {
         this->tokenizer.PutbackToken();
@@ -1091,22 +1347,30 @@ void CompilationEngine::CompileTerm()
         this->ExpectSymbol(')');
     }
     // unaryOp term
-    else if (this->tokenizer.GetTokenType() == eTokenTypeSymbol &&
+    else if (tokenType == eTokenTypeSymbol &&
              (this->tokenizer.GetSymbol() == '-' ||
               this->tokenizer.GetSymbol() == '~'))
     {
-        char expectedSymbol = this->tokenizer.GetSymbol();
-        this->tokenizer.PutbackToken();
-
-        this->ExpectSymbol(expectedSymbol);
+        char symbol = this->tokenizer.GetSymbol();
         this->CompileTerm();
+        if (symbol == '-')
+        {
+            this->vmWriter.WriteArithmetic(eVMOperationNeg);
+        }
+        else if (symbol == '~')
+        {
+            this->vmWriter.WriteArithmetic(eVMOperationNot);
+        }
+        // invalid unary op
+        else
+        {
+            assert(false);
+        }
     }
     else
     {
         this->tokenizer.ThrowException(EXPECTED_TERM_ERR);
     }
-
-    this->outputStream << "</term>" << endl;
 }
 
 void CompilationEngine::CompileFile()

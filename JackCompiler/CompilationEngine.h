@@ -20,8 +20,14 @@ namespace JackCompiler
     public:
         CompilationEngine(const std::string& inputFilename, const std::string& outputFilename)
             : tokenizer(inputFilename),
-              outputStream(outputFilename),
-              vmWriter(outputFilename) {};
+              outputStream("aaa.xml"),
+              vmWriter(outputFilename),
+              autoIncrementCounter(0)
+        {
+            size_t indexOfSlash = outputFilename.find_last_of("/");
+            size_t indexOfDot = outputFilename.find_last_of(".");
+            this->outputFilename = outputFilename.substr(indexOfSlash + 1, (indexOfDot - indexOfSlash - 1));
+        };
 
     void CompileFile();
     private:
@@ -30,32 +36,38 @@ namespace JackCompiler
         SymbolTable symbolTable;
         VMWriter vmWriter;
 
+        std::string outputFilename;
+        size_t autoIncrementCounter;
+
         void CompileClass();
         bool CompileClassVarDec();
         bool CompileSubroutine();
-        void CompileParameterList();
-        bool CompileVarDec();
+        int CompileParameterList();
+        int CompileVarDec();
         void CompileStatements();
         bool CompileDo();
         bool CompileLet();
         bool CompileWhile();
         bool CompileReturn();
         bool CompileIf();
-        void CompileExpressionList();
+        int CompileExpressionList();
         bool CompileExpression();
         void CompileTerm();
 
         void ExpectKeyword(eKeyword keyword);
         void ExpectSymbol(char symbol);
-        void ExpectIdentifier(eIdentifierType expectedIdType,
-                              std::string idType = std::string(),
-                              eVariableKind idKind = eVariableKindNone);
+        std::string ExpectIdentifier(eIdentifierType expectedIdType,
+                                     std::string idType = std::string(),
+                                     eVariableKind idKind = eVariableKindNone);
         void ExpectIntConst();
         void ExpectStringConst();
 
         bool IsNextTokenTerm();
         bool IsNextTokenOperation();
         std::string GetIdentifierXMLFormat(const std::string& id);
+        void WriteOperation(char operationSymbol, bool isUnary);
+        std::string GenerateLabel();
+        std::string GetFullSubroutineName(std::string subroutineName);
     };
 }
 

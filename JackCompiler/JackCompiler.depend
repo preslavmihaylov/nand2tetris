@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1493653070 source:d:\programming\repositories\personal\hackassembler\jackcompiler\main.cpp
+1494080548 source:d:\programming\repositories\personal\hackassembler\jackcompiler\main.cpp
 	<iostream>
 	"JackController.h"
 	"JackTokenizer.h"
@@ -18,15 +18,16 @@
 	<string>
 	<fstream>
 
-1493658311 d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.h
+1494103681 d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.h
 	"JackTokenizer.h"
 	"SymbolTable.h"
+	"VMWriter.h"
 
-1493660462 source:d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.cpp
+1494103720 source:d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.cpp
 	<cassert>
 	<sstream>
+	<unordered_set>
 	"CompilationEngine.h"
-	<cstdlib>
 
 1492420867 source:d:\programming\repositories\personal\hackassembler\jackcompiler\jackanalyzer.cpp
 	<dirent.h>
@@ -37,7 +38,7 @@
 1492420554 d:\programming\repositories\personal\hackassembler\jackcompiler\jackanalyzer.h
 	<string>
 
-1493635071 source:d:\programming\repositories\personal\hackassembler\jackcompiler\jackcontroller.cpp
+1494080844 source:d:\programming\repositories\personal\hackassembler\jackcompiler\jackcontroller.cpp
 	<dirent.h>
 	<iostream>
 	"JackController.h"
@@ -46,7 +47,7 @@
 1493635057 d:\programming\repositories\personal\hackassembler\jackcompiler\jackcontroller.h
 	<string>
 
-1493636106 d:\programming\repositories\personal\hackassembler\jackcompiler\vmwriter.h
+1494081725 d:\programming\repositories\personal\hackassembler\jackcompiler\vmwriter.h
 	<fstream>
 	<string>
 
