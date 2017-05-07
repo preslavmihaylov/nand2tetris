@@ -20,7 +20,6 @@ namespace JackCompiler
     public:
         CompilationEngine(const std::string& inputFilename, const std::string& outputFilename)
             : tokenizer(inputFilename),
-              outputStream("aaa.xml"),
               vmWriter(outputFilename),
               autoIncrementCounter(0)
         {
@@ -32,7 +31,6 @@ namespace JackCompiler
     void CompileFile();
     private:
         JackTokenizer tokenizer;
-        std::ofstream outputStream;
         SymbolTable symbolTable;
         VMWriter vmWriter;
 
@@ -64,7 +62,6 @@ namespace JackCompiler
 
         bool IsNextTokenTerm();
         bool IsNextTokenOperation();
-        std::string GetIdentifierXMLFormat(const std::string& id);
         void WriteOperation(char operationSymbol, bool isUnary);
         std::string GenerateLabel();
         std::string GetFullSubroutineName(std::string subroutineName);

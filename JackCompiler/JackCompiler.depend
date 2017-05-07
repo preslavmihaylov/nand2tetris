@@ -1,11 +1,7 @@
 # depslib dependency file v1.0
-1494080548 source:d:\programming\repositories\personal\hackassembler\jackcompiler\main.cpp
+1494150876 source:d:\programming\repositories\personal\hackassembler\jackcompiler\main.cpp
 	<iostream>
 	"JackController.h"
-	"JackTokenizer.h"
-	"CompilationEngine.h"
-	"VMWriter.h"
-	"SymbolTable.h"
 
 1492363802 source:d:\programming\repositories\personal\hackassembler\jackcompiler\jacktokenizer.cpp
 	<cassert>
@@ -18,12 +14,12 @@
 	<string>
 	<fstream>
 
-1494103681 d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.h
+1494148725 d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.h
 	"JackTokenizer.h"
 	"SymbolTable.h"
 	"VMWriter.h"
 
-1494103720 source:d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.cpp
+1494150822 source:d:\programming\repositories\personal\hackassembler\jackcompiler\compilationengine.cpp
 	<cassert>
 	<sstream>
 	<unordered_set>
@@ -55,7 +51,7 @@
 	<cassert>
 	"VMWriter.h"
 
-1493660764 d:\programming\repositories\personal\hackassembler\jackcompiler\symboltable.h
+1494150923 d:\programming\repositories\personal\hackassembler\jackcompiler\symboltable.h
 	<string>
 	<unordered_map>
 

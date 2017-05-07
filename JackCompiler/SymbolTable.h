@@ -42,10 +42,6 @@ namespace JackCompiler
         std::string GetTypeOf(const std::string& identifier);
         int GetIndexOf(const std::string& identifier);
         void Clear();
-        std::string GetKindString(eVariableKind kind);
-#ifdef DEBUG_BUILD
-        void PrintSymbolTable();
-#endif // DEBUG_BUILD
     private:
         SymbolHashTable classTable;
         SymbolHashTable subroutineTable;
