@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 
 #include "JackController.h"
 
@@ -19,13 +20,20 @@ int main(int argc, char * argv[])
     string filename(argv[1]);
     size_t dotIndex = filename.find_last_of(".");
 
-    if (dotIndex != string::npos)
+    try
     {
-        jackController.CompileFile(filename);
+        if (dotIndex != string::npos)
+        {
+            jackController.CompileFile(filename);
+        }
+        else
+        {
+            jackController.CompileDirectory(filename);
+        }
     }
-    else
+    catch (const runtime_error& ex)
     {
-        jackController.CompileDirectory(filename);
+        cerr << "Error: " << ex.what();
     }
 
     return 0;
