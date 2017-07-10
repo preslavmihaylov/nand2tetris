@@ -28,7 +28,7 @@ The VM language specification can be found at: [The Elements of Computing System
 A compiler that translates a high-level programming language called Jack (Syntax similar to Java), to the intermediate VM language.
 The language is described using a syntax grammar, specified in: [The Elements of Computing Systems, Chapter 10](http://www1.idc.ac.il/tecs/book/chapter10.pdf)
 
-## Operating system
+## Jack OS
 An OS, designed to provide utility functions, used by the compiler such as allocating dynamic memory and bootloading the initial code.
 It also provides a standard library, similar to other popular libraries. 
 It consists of utilities for Math functions, handling I/O with the screen and keyboard, accesing raw memory and more.
